@@ -28,8 +28,8 @@ type PostResponse struct {
 }
 
 type Storer interface {
-	SaveUrlCode(code string, url string) error
-	GetUrlByCode(code string) (string, error)
+	SaveURLCode(code string, url string) error
+	GetURLByCode(code string) (string, error)
 }
 
 type Storage struct {
@@ -41,7 +41,7 @@ type PostgresStorage struct {
 	pool *pgxpool.Pool
 }
 
-func (ps *PostgresStorage) SaveUrlCode(code string, url string) error {
+func (ps *PostgresStorage) SaveURLCode(code string, url string) error {
 	_, err := ps.pool.Exec(context.Background(),
 		"INSERT INTO links (code, url) VALUES($1, $2)", code, url)
 	if err != nil {
@@ -50,12 +50,12 @@ func (ps *PostgresStorage) SaveUrlCode(code string, url string) error {
 	return nil
 }
 
-func (ps *PostgresStorage) GetUrlByCode(code string) (string, error) {
+func (ps *PostgresStorage) GetURLByCode(code string) (string, error) {
 	var url string
 	err := ps.pool.QueryRow(context.Background(),
 		"SELECT url FROM links WHERE code = $1", code).Scan(&url)
-	if err !=nil {
-		if errors.Is(err, pgx.ErrNoRows){
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return "", ErrNotFound
 		}
 		return "", err
@@ -63,14 +63,14 @@ func (ps *PostgresStorage) GetUrlByCode(code string) (string, error) {
 	return url, nil
 }
 
-func (st *Storage) SaveUrlCode(code string, url string) error {
+func (st *Storage) SaveURLCode(code string, url string) error {
 	st.mx.Lock()
 	defer st.mx.Unlock()
 	st.Codes[code] = url
 	return nil
 }
 
-func (st *Storage) GetUrlByCode(code string) (string, error) {
+func (st *Storage) GetURLByCode(code string) (string, error) {
 	st.mx.Lock()
 	defer st.mx.Unlock()
 	url, ok := st.Codes[code]
@@ -92,7 +92,7 @@ func (s *Service) GenerateCode(url string) string {
 		code[i] = charset[rand.Intn(len(charset))]
 	}
 
-	if _, err := s.Storage.GetUrlByCode(string(code)); err == nil {
+	if _, err := s.Storage.GetURLByCode(string(code)); err == nil {
 		return s.GenerateCode(url) //возможна редкая коллизия при гонке, не критично
 	}
 	return string(code)
@@ -100,15 +100,15 @@ func (s *Service) GenerateCode(url string) string {
 
 func (s *Service) SaveInStorage(url string) (string, error) {
 	code := s.GenerateCode(url)
-	err := s.Storage.SaveUrlCode(code, url)
+	err := s.Storage.SaveURLCode(code, url)
 	if err != nil {
 		return "", err
 	}
 	return code, nil
 }
 
-func (s *Service) GetOriginalUrl(code string) (string, error) {
-	url, err := s.Storage.GetUrlByCode(code)
+func (s *Service) GetOriginalURL(code string) (string, error) {
+	url, err := s.Storage.GetURLByCode(code)
 	return url, err
 }
 
@@ -149,7 +149,7 @@ func (h *Handler) RedirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalPath, err := h.Service.GetOriginalUrl(code)
+	originalPath, err := h.Service.GetOriginalURL(code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
