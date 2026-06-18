@@ -7,10 +7,12 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 var ErrNotFound = errors.New("not found")
@@ -179,7 +181,16 @@ func (h *Handler) HealthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	connString := "postgres://shortener:secret@localhost:5432/shortener"
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("not load .env file")
+	}
+
+	connString := os.Getenv("DATABASE_URL")
+	if connString == "" {
+		log.Fatal("cant load database url")
+	}
+
 	pool, err := pgxpool.New(context.Background(), connString)
 	if err != nil {
 		log.Fatal(err)
